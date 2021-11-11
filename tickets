@@ -1,0 +1,97 @@
+Thoughts:
+
+My thoughts about Customer Support Ticket With Traceback are as follows.
+
+The first thing I will do is read the error and see if I'm familiar with the problem.
+I also notice that it says "(See above for error)" so I will ask for the information before that.
+I also notice that while the client says it is a memory error, there are other errors as well.
+I would ask how big the files they are trying to clone and how much space they have available.
+	
+I am  wondering if this is a dask issue https://user-images.githubusercontent.com/11656932/120717689-9b4ed600-c48d-11eb-83aa-f36e2f133505.png 
+
+I would ask to take a look at the code that caused the bug.
+	It looks like this line is throwing the exception:
+	Running command git clone -q https://github.com/gjoseph92/once-per-worker.git /tmp/pip-req-build-uwfb2f_x
+	I am wondering who's github they are trying to clone and if I can repeat the error
+	So now I am looking to repeat the error.
+	I look for https://github.com/gjoseph92/once-per-worker.git /tmp/pip-req-build-uwfb2f_x
+		I can't find it, I would probably ask if it was possible to gain access to the repo
+		I did find gioseph92's repo and saw the cool mountain picture.
+
+Are they trying to download coiled from the repository?
+I search github to see if this has been an issue before:
+		it seems that building a software environment using a .yml file that contains the pip
+		package camel-tools has been problematic in the past, although it looks like the errors are different.
+		https://github.com/coiled/feedback/issues/140 
+
+As I move farther down in the traceback it looks like it is an attempt to download a library from 
+coiled.
+So I am going to take a look at the coiled documents about installing software environments locally
+	"it’s recommended to have the same libraries installed on both your local machine and on the 
+remote workers in your cluster."
+		I am now wondering if the user has the correct libraries installed on their computer
+			specifically pytorch or anaconda 
+		I am also wondering if the problem is in the package they tried to clone from github
+		honestly uncertain if they are trying to download coiled or anaconda from the repo
+			-is this the problem
+		Don't think it is this because pip fails with a "PackagesNotFoundError"
+			https://github.com/conda/conda/issues/8743 
+			Also you can see that conda is installed in the traceback error
+
+It looks like there is an issue with conda running pip install particularly with regards to pytorch
+	https://github.com/pytorch/pytorch/issues/3622 
+
+Then I look up the KeyError: 'torch'.
+	I am wondering if they were trying to download pytorch (from the requirements file), and if so which one.
+Then search github for conda memory issues:
+	I find pytorch causing memory issues and as suspicious as it is, the client isn't using elastic
+	https://github.com/pytorch/pytorch/issues/64990 
+
+Then I searched github for pytorch and memory issues. I believe this is the problem
+	Memory Error in pip install of torch 1.2.0 on Linux · Issue #25164 · pytorch/pytorch 
+	Torch is not installed locally, it’s not in the .yml file
+	Then I would ask the client “Is torch listed in the requirements file?”
+
+Conclusion::
+	There are two exceptions being thrown from trying to clone the github repository. Torch seems to commonly throw MemoryErrors when being installed from a requirements.txt. Torch may need to be pip installed locally using the command pip --no-cache-dir install torchvision Or  pip install torch==1.2.0+cpu torchvision==0.4.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+The attempt could be throwing errors because torch is not being properly installed as a result of a lack of available memory. The user may just need to gain access to more memory before installation.
+After sending this information to the user, I would ask that they let me know if it worked and which actions solved their issue.
+
+Thoughts:
+
+My thoughts about Customer Support Ticket to Read a CSV are as follows.
+
+What kind of error are they getting when they use read_csv?
+
+First I look at AWS:
+1.How coild accesses the s3 bucket (coiled documentation)
+		https://docs.coiled.io/user_guide/tutorials/aws_permissions.html 
+does the user have access to the bucket
+what region are they using
+
+2. Are they trying to use Dask clusters managed by Coiled the S3 bucket through dask?
+If so I would refer them to where Coiled’s documentation refers them to
+		https://docs.dask.org/en/latest/bag-creation.html
+		b = db.read_text('myfile.*.csv').str.strip().str.split(',')
+			To create a dask bag from a csv file (this doesn’t pull from S3)
+Dask instructions on connecting to remote data
+	https://docs.dask.org/en/latest/how-to/connect-to-remote-data.html 
+	import dask.dataframe as dd
+df = dd.read_csv('s3://bucket/path/to/data-*.csv')
+df = dd.read_parquet('gcs://bucket/path/to/data-*.parq')
+
+import dask.bag as db
+b = db.read_text('hdfs://path/to/*.json').map(json.loads)
+
+3. Then I checked documentation from AWS 
+Where it gives directions on how to load the data set from S3 to a Dask DataFrame
+https://aws.amazon.com/blogs/machine-learning/machine-learning-on-distributed-dask-using-amazon-sagemaker-and-aws-fargate/
+import s3fs
+import dask.dataframe as dd
+df = dd.read_csv(
+    's3://nyc-tlc/trip data/yellow_tripdata_2018-*.csv', storage_options={'anon': True}, parse_dates=['tpep_pickup_datetime','tpep_dropoff_datetime']
+)
+
+Conclusions:
+I would ask the user what does it mean when you can’t use “read_csv”? What happens when the user tries to use “read_csv”? Is there an error message? 
+That would determine which of these three options I select to suggest. After sending this information to the user, I would ask that they let me know if it worked and which actions solved their issue.
